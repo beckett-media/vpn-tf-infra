@@ -9,6 +9,10 @@ locals {
   }
 }
 
+data "aws_ecs_task_definition" "task" {
+  task_definition = aws_ecs_task_definition.main[0].family
+}
+
 provider "twingate" {
   api_token = var.twingate_api_token
   network   = var.twingate_network_name
@@ -69,11 +73,37 @@ resource "aws_ecs_cluster" "main" {
   )
 }
 
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = join("-", [var.environment, var.name, "ecs-task-execution-role"])
+ 
+  assume_role_policy = <<EOF
+{
+ "Version": "2012-10-17",
+ "Statement": [
+   {
+     "Action": "sts:AssumeRole",
+     "Principal": {
+       "Service": "ecs-tasks.amazonaws.com"
+     },
+     "Effect": "Allow",
+     "Sid": ""
+   }
+ ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "ecs-task-execution-role-policy-attachment" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
 resource "aws_ecs_task_definition" "main" {
   count = var.create ? 1 : 0
 
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   cpu                      = var.task_cpu
   memory                   = var.task_memory
   family                   = join("-", [var.environment, var.name, "twingate-connector"])
@@ -86,8 +116,17 @@ resource "aws_ecs_task_definition" "main" {
     environment = [
       { "name" : "TENANT_URL", "value" : "https://${var.twingate_network_name}.twingate.com" },
       { "name" : "ACCESS_TOKEN", "value" : twingate_connector_tokens.aws_connector_tokens[0].access_token },
-      { "name" : "REFRESH_TOKEN", "value" : twingate_connector_tokens.aws_connector_tokens[0].refresh_token }
+      { "name" : "REFRESH_TOKEN", "value" : twingate_connector_tokens.aws_connector_tokens[0].refresh_token },
+      { "name" : "TWINGATE_LOG_ANALYTICS", "value" : "v1" }
     ]
+    logConfiguration = {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-group": join("-", [var.environment, var.name, "twingate-connector"])
+            "awslogs-region": var.region,
+            "awslogs-stream-prefix": "ecs"
+          }
+        }
   }])
 
   tags = merge(
@@ -105,7 +144,7 @@ resource "aws_ecs_service" "main" {
 
   name                               = join("-", [var.environment, var.name, "twingate-connector", "service"])
   cluster                            = aws_ecs_cluster.main[0].id
-  task_definition                    = aws_ecs_task_definition.main[0].arn
+  task_definition                    = "${aws_ecs_task_definition.main[0].family}:${max(aws_ecs_task_definition.main[0].revision, data.aws_ecs_task_definition.task.revision)}"
   desired_count                      = 1
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
@@ -126,6 +165,15 @@ resource "aws_ecs_service" "main" {
     {
       Name = join("-", [var.environment, var.name, "twingate-connector", "service"])
     },
+    local.common_tags,
+    var.tags
+  )
+}
+
+resource "aws_cloudwatch_log_group" "yada" {
+  name = join("-", [var.environment, var.name, "twingate-connector"])
+
+  tags = merge(
     local.common_tags,
     var.tags
   )

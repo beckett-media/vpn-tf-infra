@@ -47,6 +47,7 @@ module "networking" {
 
 module "beckett_vpn" {
   source                = "./modules/vpn"
+  region = var.region
   create                = lookup(local.config, terraform.workspace).modules.beckett_vpn_connector
   environment           = lookup(local.config, terraform.workspace)["environment"]
   name                  = "vulcan-beckett-own"
@@ -55,12 +56,13 @@ module "beckett_vpn" {
   subnets               = module.networking.private_subnets_id
   twingate_api_token    = var.beckett_twingate_api_token
   twingate_network_name = var.beckett_twingate_network_name
-  task_cpu              = 512
-  task_memory           = 1024
+  task_cpu              = 1024
+  task_memory           = 2048
 }
 
 module "psd_vpn" {
   source                = "./modules/vpn"
+  region = var.region
   create                = lookup(local.config, terraform.workspace).modules.psd_vpn_connector
   environment           = lookup(local.config, terraform.workspace)["environment"]
   name                  = "vulcan-psd"
@@ -69,6 +71,6 @@ module "psd_vpn" {
   subnets               = module.networking.private_subnets_id
   twingate_api_token    = var.twingate_api_token
   twingate_network_name = var.twingate_network_name
-  task_cpu              = 512
-  task_memory           = 1024
+  task_cpu              = 1024
+  task_memory           = 2048
 }

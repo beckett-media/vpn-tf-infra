@@ -3,6 +3,12 @@ variable "environment" {
   description = "Environment name"
 }
 
+variable "region" {
+  type        = string
+  description = "Region for log group"
+}
+
+
 variable "name" {
   type        = string
   description = "Connector name"
