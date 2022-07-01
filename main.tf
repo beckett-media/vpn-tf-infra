@@ -74,3 +74,18 @@ module "psd_vpn" {
   task_cpu              = 1024
   task_memory           = 2048
 }
+
+module "comic_vpn_peering" {
+  source                   = "./modules/vpn-peering"
+  create                   = true
+  environment              = lookup(local.config, terraform.workspace)["environment"]
+  stack_name_ctx           = ["comics"]
+  vpn_vpc_id               = module.networking.vpc_id
+  vpn_vpc_cidr_block       = module.networking.cidr_block
+  vpn_vpc_route_table_id   = module.networking.public_route_table_id
+
+  secondary_vpc_id         = "vpc-0e36ff2bff453c1c2"
+  secondary_vpc_cidr_block = "10.0.0.0/16"
+  connected_routetable_ids = ["rtb-0df92236609d50e5f", "rtb-0fcdbfdf6de860aee", "rtb-0defb394545b367f3", "rtb-0f2144fb5d4f8f55d", "rtb-05a2262930fbec4cf", "rtb-059e0b371bd26cc07"]
+
+}
