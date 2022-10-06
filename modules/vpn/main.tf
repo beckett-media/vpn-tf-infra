@@ -10,6 +10,7 @@ locals {
 }
 
 data "aws_ecs_task_definition" "task" {
+  count = var.create ? 1 : 0
   task_definition = aws_ecs_task_definition.main[0].family
 }
 
@@ -75,7 +76,7 @@ resource "aws_ecs_cluster" "main" {
 
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = join("-", [var.environment, var.name, "ecs-task-execution-role"])
- 
+
   assume_role_policy = <<EOF
 {
  "Version": "2012-10-17",
@@ -120,13 +121,13 @@ resource "aws_ecs_task_definition" "main" {
       { "name" : "TWINGATE_LOG_ANALYTICS", "value" : "v1" }
     ]
     logConfiguration = {
-          "logDriver": "awslogs",
-          "options": {
-            "awslogs-group": join("-", [var.environment, var.name, "twingate-connector"])
-            "awslogs-region": var.region,
-            "awslogs-stream-prefix": "ecs"
-          }
-        }
+      "logDriver" : "awslogs",
+      "options" : {
+        "awslogs-group" : join("-", [var.environment, var.name, "twingate-connector"])
+        "awslogs-region" : var.region,
+        "awslogs-stream-prefix" : "ecs"
+      }
+    }
   }])
 
   tags = merge(
@@ -144,7 +145,7 @@ resource "aws_ecs_service" "main" {
 
   name                               = join("-", [var.environment, var.name, "twingate-connector", "service"])
   cluster                            = aws_ecs_cluster.main[0].id
-  task_definition                    = "${aws_ecs_task_definition.main[0].family}:${max(aws_ecs_task_definition.main[0].revision, data.aws_ecs_task_definition.task.revision)}"
+  task_definition                    = "${aws_ecs_task_definition.main[0].family}:${max(aws_ecs_task_definition.main[0].revision, data.aws_ecs_task_definition.task[0].revision)}"
   desired_count                      = 1
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200

@@ -17,7 +17,7 @@ locals {
       modules = {
         networking_nat        = true
         networking_dbnet      = false
-        psd_vpn_connector     = true
+        psd_vpn_connector     = false
         beckett_vpn_connector = true
       }
     }
@@ -47,7 +47,7 @@ module "networking" {
 
 module "beckett_vpn" {
   source                = "./modules/vpn"
-  region = var.region
+  region                = var.region
   create                = lookup(local.config, terraform.workspace).modules.beckett_vpn_connector
   environment           = lookup(local.config, terraform.workspace)["environment"]
   name                  = "vulcan-beckett-own"
@@ -62,7 +62,7 @@ module "beckett_vpn" {
 
 module "psd_vpn" {
   source                = "./modules/vpn"
-  region = var.region
+  region                = var.region
   create                = lookup(local.config, terraform.workspace).modules.psd_vpn_connector
   environment           = lookup(local.config, terraform.workspace)["environment"]
   name                  = "vulcan-psd"
@@ -76,13 +76,13 @@ module "psd_vpn" {
 }
 
 module "comic_vpn_peering" {
-  source                   = "./modules/vpn-peering"
-  create                   = true
-  environment              = lookup(local.config, terraform.workspace)["environment"]
-  stack_name_ctx           = ["comics"]
-  vpn_vpc_id               = module.networking.vpc_id
-  vpn_vpc_cidr_block       = module.networking.cidr_block
-  vpn_vpc_route_table_id   = module.networking.public_route_table_id
+  source                 = "./modules/vpn-peering"
+  create                 = true
+  environment            = lookup(local.config, terraform.workspace)["environment"]
+  stack_name_ctx         = ["comics"]
+  vpn_vpc_id             = module.networking.vpc_id
+  vpn_vpc_cidr_block     = module.networking.cidr_block
+  vpn_vpc_route_table_id = module.networking.public_route_table_id
 
   secondary_vpc_id         = "vpc-0e36ff2bff453c1c2"
   secondary_vpc_cidr_block = "10.0.0.0/16"
